@@ -1,8 +1,7 @@
-package kz.orynbek.bitlabInternProject.config;
+package kz.orynbek.bitlabInternProject.security.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,6 +21,7 @@ public class SecurityConfig {
                         auth -> auth
                                 .requestMatchers("/user/create").permitAll()
                                 .requestMatchers("/user/sign-in").permitAll()
+                                .requestMatchers("/user/refresh-token").permitAll()
                                 .anyRequest().authenticated()
 
                 )

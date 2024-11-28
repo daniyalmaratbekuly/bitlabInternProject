@@ -2,11 +2,12 @@ package kz.orynbek.bitlabInternProject.security.dtos;
 
 import lombok.*;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
+
 public class UserCreateDTO {
     private String email;
     private boolean emailVerified;

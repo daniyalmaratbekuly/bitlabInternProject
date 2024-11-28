@@ -1,7 +1,10 @@
-package kz.orynbek.bitlabInternProject.service;
+package kz.orynbek.bitlabInternProject.security.services;
 
-import kz.orynbek.bitlabInternProject.DTO.UserCreateDTO;
-import kz.orynbek.bitlabInternProject.DTO.UserSignInDTO;
+
+import kz.orynbek.bitlabInternProject.security.dtos.UserCreateDTO;
+import kz.orynbek.bitlabInternProject.security.dtos.UserRefreshTokenDTO;
+import kz.orynbek.bitlabInternProject.security.dtos.UserSignInDTO;
+import kz.orynbek.bitlabInternProject.security.dtos.UserUpdateDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
@@ -20,7 +23,6 @@ import org.springframework.web.client.RestTemplate;
 import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @Slf4j
@@ -41,7 +43,6 @@ public class KeycloakService {
         UserRepresentation newUser = new UserRepresentation();
         newUser.setEmail(user.getEmail());
         newUser.setEmailVerified(true);
-        newUser.setFirstName(user.getFirstName());
         newUser.setUsername(user.getUsername());
         newUser.setFirstName(user.getFirstName());
         newUser.setLastName(user.getLastName());
@@ -58,17 +59,18 @@ public class KeycloakService {
                 .users()
                 .create(newUser);
 
-        if (response.getStatus()!= HttpStatus.CREATED.value()){//201status
-        log.error("Error creating user:");
-        throw new RuntimeException("Failed to create user");
-    }
+        if (response.getStatus() != HttpStatus.CREATED.value()) {//201status
+            log.error("Error creating user:");
+            throw new RuntimeException("Failed to create user");
+        }
 
-    List<UserRepresentation> searchUsers = keycloak.realm(realm).users().search(user.getUsername());
+        List<UserRepresentation> searchUsers = keycloak
+                .realm(realm).users().search(user.getUsername());
         return searchUsers.get(0);
     }
 
 
-    public String signIn(UserSignInDTO userSignInDTO){
+    public String signIn(UserSignInDTO userSignInDTO) {
         String tokenEndpoint = url + "/realms/" + realm + "/protocol/openid-connect/token";
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "password");
@@ -89,4 +91,88 @@ public class KeycloakService {
         }
         return (String) responseBody.get("access_token");
     }
+
+    public void changePassword(String username, String newPassword) {
+        List<UserRepresentation> users = keycloak
+                .realm(realm)
+                .users()
+                .search(username);
+
+        if (users.isEmpty()) {
+            log.error("User not found to change password");
+            throw new RuntimeException("User not found to change password" + username);
+        }
+
+        UserRepresentation userRepresentation = users.get(0);
+
+
+        CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
+        credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
+        credentialRepresentation.setValue(newPassword);
+        credentialRepresentation.setTemporary(false);
+
+        keycloak
+                .realm(realm)
+                .users()
+                .get(userRepresentation.getId())
+                .resetPassword(credentialRepresentation);
+
+        log.info("Changed password");
+    }
+
+    public String refreshToken(UserRefreshTokenDTO userRefreshTokenDTO) {
+        String tokenEndpoint = url + "/realms/" + realm + "/protocol/openid-connect/token";
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "password");
+        formData.add("client_id", client);
+        formData.add("client_secret", clientSecret);
+        formData.add("username", userRefreshTokenDTO.getUsername());
+        formData.add("password", userRefreshTokenDTO.getPassword());
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("content-type", "application/x-www-form-urlencoded");
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(tokenEndpoint, new HttpEntity<>(formData, headers), Map.class);
+
+        Map<String, Object> responseBody = response.getBody();
+        if (!response.getStatusCode().is2xxSuccessful() || responseBody == null) {
+            log.error("Error refresh Token");
+            throw new RuntimeException("Failed to refresh Token");
+        }
+        return (String) responseBody.get("refresh_token");
+    }
+
+
+    public void updateUserData(String username, UserUpdateDTO userUpdateDTO) {
+        List<UserRepresentation> users = keycloak
+                .realm(realm)
+                .users()
+                .search(username);
+
+        if (users.isEmpty()) {
+            log.error("User '{}' not found to update data", username);
+            throw new RuntimeException("User not found to update data: " + username);
+        }
+
+        UserRepresentation userRepresentation = users.get(0);
+
+        // Обновляем только те поля, которые были переданы в запросе
+        if (userUpdateDTO.getFirstName() != null) {
+            userRepresentation.setFirstName(userUpdateDTO.getFirstName());
+        }
+        if (userUpdateDTO.getLastName() != null) {
+            userRepresentation.setLastName(userUpdateDTO.getLastName());
+        }
+        if (userUpdateDTO.getEmail() != null) {
+            userRepresentation.setEmail(userUpdateDTO.getEmail());
+        }
+
+        keycloak
+                .realm(realm)
+                .users()
+                .get(userRepresentation.getId())
+                .update(userRepresentation);
+
+        log.info("User data updated successfully for user: {}", username);
+    }
+
 }

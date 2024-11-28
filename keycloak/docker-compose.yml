@@ -1,0 +1,30 @@
+
+
+services:
+  keycloak:
+    image: 'quay.io/keycloak/keycloak:20.0.3'
+    environment:
+      - KC_DB=postgres
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/postgres
+      - KC_DB_USERNAME=postgres
+      - KC_DB_PASSWORD=qwerty
+    command:
+      - start-dev
+      - --http-relative-path=/auth
+    ports:
+      - "8081:8080"
+      - "8843:8843"
+    depends_on:
+      - keycloak-db
+
+  keycloak-db:
+    image: 'postgres:14'
+    container_name: 'keycloak-db-container'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=qwerty
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
