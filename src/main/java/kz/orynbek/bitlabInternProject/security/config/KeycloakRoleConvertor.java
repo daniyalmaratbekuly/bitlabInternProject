@@ -20,20 +20,22 @@ public class KeycloakRoleConvertor implements Converter<Jwt, AbstractAuthenticat
         Collection<GrantedAuthority> authorities = extractAuthorities(source);
         return new JwtAuthenticationToken(source, authorities);
     }
-    private Collection<GrantedAuthority>extractAuthorities(Jwt source) {
 
-        Map<String, Object> realmAccess =( Map<String, Object>)source.getClaims().get("realmAccess");
+    private Collection<GrantedAuthority> extractAuthorities(Jwt source) {
+        Map<String, Object> realmAccess = (Map<String, Object>) source.getClaims().get("realm_access");
 
-        if (realmAccess == null || realmAccess.isEmpty()){
+        if (realmAccess == null || realmAccess.isEmpty()) {
             return Collections.emptyList();
         }
-        List<String> roles = (List<String>)realmAccess.get("roles");
-        if (roles == null || roles.isEmpty()){
+
+        List<String> roles = (List<String>) realmAccess.get("roles");
+        if (roles == null || roles.isEmpty()) {
             return Collections.emptyList();
         }
+
         return roles.stream()
-                .map(roleName -> "ROLE_" + roleName)
-                .map(SimpleGrantedAuthority ::new)
+                .map(roleName -> "ROLE_" + roleName) // Преобразование в формат Spring Security
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
 }

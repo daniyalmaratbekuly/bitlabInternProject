@@ -1,12 +1,10 @@
-
-
 services:
   keycloak:
     image: 'quay.io/keycloak/keycloak:20.0.3'
     environment:
       - KC_DB=postgres
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_ADMIN=daniyal
+      - KEYCLOAK_ADMIN_PASSWORD=daniyal
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/postgres
       - KC_DB_USERNAME=postgres
       - KC_DB_PASSWORD=qwerty
@@ -28,3 +26,35 @@ services:
       - POSTGRES_DB=postgres
     ports:
       - "5432:5432"
+
+  minio-service:
+    image: quay.io/minio/minio
+    container_name: minio-service-container
+    environment:
+      - MINIO_ROOT_USER=root
+      - MINIO_ROOT_PASSWORD=rootpassword
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-setup:
+    image: minio/mc
+    depends_on:
+      - minio-service  # <-- Должно совпадать с именем MinIO-сервиса
+    environment:
+      MC_HOST: http://root:rootpassword@minio-service:9000
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Инициализация MinIO...';
+      mc alias set minio http://minio-service:9000 root rootpassword;
+      mc mb minio/dev-bucket || true;
+      exit 0;
+      "
+
+volumes:
+  keycloak_postgres_data:
+  postgres_data:
+  minio_data:

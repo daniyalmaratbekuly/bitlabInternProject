@@ -8,22 +8,25 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         auth -> auth
-                                .requestMatchers("/user/create").permitAll()
-                                .requestMatchers("/user/sign-in").permitAll()
-                                .requestMatchers("/user/refresh-token").permitAll()
+                                .requestMatchers("/user/create", "/user/sign-in", "/user/refresh-token").permitAll()
+                                .requestMatchers("/course/**").hasRole("ADMIN") // Доступ только для ADMIN
+                                .requestMatchers("/chapter/**").hasRole("ADMIN") // Доступ только для ADMIN
+                                .requestMatchers("/lesson/**").hasRole("ADMIN") // Только админ может работать с уроками
+                                .requestMatchers("file/upload").hasAnyRole("ADMIN", "TEACHER")
+                                .requestMatchers("/file/download/**").hasAnyRole("ADMIN", "TEACHER","USER")
                                 .anyRequest().authenticated()
-
                 )
                 .sessionManagement(
                         session -> session
@@ -31,10 +34,9 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(o -> o
                         .jwt(jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(keycloakRoleConvertor()))
-                        );
+                );
         return httpSecurity.build();
     }
-
     @Bean
     public KeycloakRoleConvertor keycloakRoleConvertor() {
         return new KeycloakRoleConvertor();
